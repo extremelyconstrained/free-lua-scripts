@@ -116,7 +116,7 @@ end
 
 local placeId = game.PlaceId
 
-if placeId == 138837502355157 then
+if placeId == 110333320616502 then
 	promptGraceMode()
 elseif scriptsByPlace[placeId] then
 	for _, path in ipairs(scriptsByPlace[placeId]) do
