@@ -22,7 +22,6 @@ local function loadScript(path)
 end
 
 local scriptsByPlace = {
-	[5315046213] = { "scripts/bhop/Autostrafe.lua", "scripts/bhop/TASRecorder.lua" },
 	[14044547200] = { "scripts/UntitledTagGame.lua" },
 	[18667984660] = { "scripts/FlexFPS%26Ping.lua" },
 	[134728380684025] = { "scripts/AislesOfTheLocust.lua" },
