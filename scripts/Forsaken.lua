@@ -1,5 +1,5 @@
 -- Forsaken — ESP (survivors & killers, 2D boxes) + Infinite Stamina
--- F2 toggles everything; ~ G.ForsakenScriptCleanup restores pristine state.
+-- F2 toggles everything; _G.ForsakenScriptCleanup restores pristine state.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,10 +10,6 @@ local UserInputService = game:GetService("UserInputService")
 if _G.ForsakenScriptCleanup then
 	pcall(_G.ForsakenScriptCleanup)
 	_G.ForsakenScriptCleanup = nil
-end
-if _G.ForsakenAutoGenCleanup then
-	pcall(_G.ForsakenAutoGenCleanup)
-	_G.ForsakenAutoGenCleanup = nil
 end
 
 local localPlayer = Players.LocalPlayer
