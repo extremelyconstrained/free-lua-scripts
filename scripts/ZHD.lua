@@ -3,7 +3,7 @@
 
 local FOV_STEP = 10
 local FOV_MIN = 10
-local FOV_MAX = 500
+local FOV_MAX = 1000
 local LOS_CHECK = true
 local AIM_ONLY_OWN_SHOTS = true
 
@@ -43,7 +43,7 @@ local state = {
     tracer = nil,
     settings = {
         enabled = true,
-        fov = 120,
+        fov = 250,
         showBoxes = false,
         showNames = false,
         showHealth = false,
