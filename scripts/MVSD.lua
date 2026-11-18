@@ -9,18 +9,6 @@ if _G.MVSD then
 	pcall(_G.MVSD)
 	_G.MVSD = nil
 end
-if _G.MurderersEspCleanup then
-	pcall(_G.MurderersEspCleanup)
-	_G.MurderersEspCleanup = nil
-end
-if _G.MurderersRagebotCleanup then
-	pcall(_G.MurderersRagebotCleanup)
-	_G.MurderersRagebotCleanup = nil
-end
-if _G.MurderersCombinedCleanup then
-	pcall(_G.MurderersCombinedCleanup)
-	_G.MurderersCombinedCleanup = nil
-end
 
 local localPlayer = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
@@ -395,9 +383,6 @@ cleanup = function()
 	destroyAllDrawings()
 end
 
-_G.MurderersCombinedCleanup = cleanup
-_G.MurderersEspCleanup = cleanup
-_G.MurderersRagebotCleanup = cleanup
 _G.MVSD = cleanup
 
 return "MVSD loaded"
