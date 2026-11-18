@@ -27,6 +27,7 @@ local scriptsByPlace = {
 	[134728380684025] = { "scripts/AislesOfTheLocust.lua" },
 	[119925538689885] = { "scripts/StealOrDie.lua" },
 	[698448212] = { "scripts/Robeats.lua" },
+	[138014591158268] = { "scripts/ZHD.lua" },
 }
 
 local function getGuiParent()
@@ -113,10 +114,84 @@ local function promptGraceMode()
 	screenGui.Parent = parent
 end
 
+local function promptMVSDMode()
+	local parent = getGuiParent()
+
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "MVSDLoaderPrompt"
+	screenGui.ResetOnSpawn = false
+	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local frame = Instance.new("Frame")
+	frame.Name = "Prompt"
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	frame.Position = UDim2.fromScale(0.5, 0.5)
+	frame.Size = UDim2.fromOffset(320, 214)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	frame.BorderSizePixel = 0
+	frame.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = frame
+
+	local title = Instance.new("TextLabel")
+	title.BackgroundTransparency = 1
+	title.Size = UDim2.new(1, 0, 0, 40)
+	title.Position = UDim2.fromOffset(0, 8)
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 18
+	title.TextColor3 = Color3.fromRGB(240, 240, 240)
+	title.Text = "MVSD — select mode"
+	title.Parent = frame
+
+	local function makeButton(text, yOffset, color)
+		local button = Instance.new("TextButton")
+		button.Size = UDim2.new(1, -24, 0, 40)
+		button.Position = UDim2.new(0, 12, 0, yOffset)
+		button.BackgroundColor3 = color
+		button.BorderSizePixel = 0
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 16
+		button.TextColor3 = Color3.fromRGB(255, 255, 255)
+		button.Text = text
+		button.Parent = frame
+
+		local buttonCorner = Instance.new("UICorner")
+		buttonCorner.CornerRadius = UDim.new(0, 6)
+		buttonCorner.Parent = button
+
+		return button
+	end
+
+	local standaloneButton = makeButton("Standalone", 52, Color3.fromRGB(60, 120, 220))
+	local ragebotButton = makeButton("Ragebot", 100, Color3.fromRGB(220, 90, 60))
+	local combinedButton = makeButton("Combined", 148, Color3.fromRGB(140, 70, 220))
+
+	local function select(path)
+		screenGui:Destroy()
+		loadScript(path)
+	end
+
+	standaloneButton.Activated:Connect(function()
+		select("scripts/MVSD/MVSDStandalone.lua")
+	end)
+	ragebotButton.Activated:Connect(function()
+		select("scripts/MVSD/MVSDRagebot.lua")
+	end)
+	combinedButton.Activated:Connect(function()
+		select("scripts/MVSD/MVSDCombined.lua")
+	end)
+
+	screenGui.Parent = parent
+end
+
 local placeId = game.PlaceId
 
 if placeId == 110333320616502 then
 	promptGraceMode()
+elseif placeId == 12355337193 then
+	promptMVSDMode()
 elseif scriptsByPlace[placeId] then
 	for _, path in ipairs(scriptsByPlace[placeId]) do
 		loadScript(path)
