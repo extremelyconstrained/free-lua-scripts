@@ -1,3 +1,7 @@
+local Config = {
+	Mode = "rage", -- "rage" | "legit"
+}
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -250,6 +254,8 @@ local playerAddedConnection = Players.PlayerAdded:Connect(watchCharacter)
 
 local ShootGun = ReplicatedStorage.Remotes.ShootGun
 local Tags = require(ReplicatedStorage.Modules.Tags)
+local CollisionGroups = require(ReplicatedStorage.Modules.CollisionGroups)
+local WeaponRaycast = require(ReplicatedStorage.Modules.WeaponRaycast)
 local CharacterRayOrigin = require(ReplicatedStorage.Modules.CharacterRayOrigin)
 local BulletRenderer = require(ReplicatedStorage.Modules.BulletRenderer)
 
@@ -259,18 +265,41 @@ local MIN_COOLDOWN = 0.08
 local lastShot = 0
 local ragebotEnabled = true
 
+local function isRage()
+	return string.lower(Config.Mode) == "rage"
+end
+
 local function getEquippedGun()
 	local character = localPlayer.Character
-	if not character then return nil end
-	for _, tool in ipairs(character:GetChildren()) do
-		if tool:IsA("Tool") and CollectionService:HasTag(tool, Tags.GUN_TOOL) then
-			return tool
+	if character then
+		for _, tool in ipairs(character:GetChildren()) do
+			if tool:IsA("Tool") and CollectionService:HasTag(tool, Tags.GUN_TOOL) then
+				return tool
+			end
 		end
 	end
 	return nil
 end
 
--- closest part of the character to the shooter (no wall/LoS rejection)
+-- legit mode: shot must reach the target with a clear line of fire
+local function hasLineOfFire(targetCharacter, targetPosition)
+	local character = localPlayer.Character
+	local origin = character and CharacterRayOrigin(character)
+	if not origin then return false end
+
+	local direction = targetPosition - origin
+	if direction.Magnitude < 0.001 then return true end
+	local targetPoint = targetPosition + direction.Unit * 50
+
+	local screenHit = WeaponRaycast(camera.CFrame.Position, targetPoint, nil, CollisionGroups.SCREEN_RAYCAST)
+	local midPoint = (screenHit and screenHit.Position) or targetPoint
+
+	local originHit = WeaponRaycast(origin, midPoint)
+	if originHit == nil then return true end
+	return originHit.Instance ~= nil and originHit.Instance:IsDescendantOf(targetCharacter)
+end
+
+-- closest part of the character to the shooter (no wall/LoS rejection in rage mode)
 local function findClosestPart(character, origin)
 	local closestPart, closestPosition, closestDistance
 	for _, descendant in ipairs(character:GetDescendants()) do
@@ -305,6 +334,9 @@ local function findClosestEnemy()
 					if distance <= MAX_RANGE and (not closestDistance or distance < closestDistance) then
 						local closestPart, closestPartPosition = findClosestPart(enemyCharacter, origin)
 						if closestPart then
+							if not isRage() and not hasLineOfFire(enemyCharacter, closestPartPosition) then
+								continue
+							end
 							closest = {player = player, position = closestPartPosition, part = closestPart, distance = distance}
 							closestDistance = distance
 						end
