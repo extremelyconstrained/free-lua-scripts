@@ -1,13 +1,6 @@
 --- keybinds: 
 -- F2: Master Toggle, F3: Decrease FOV, F4: Increase FOV, F5: Change Aiming Part
 
-local PLACE_ID = 138014591158268
-
-if game.PlaceId ~= PLACE_ID then
-    warn("This script is for Z : ZHD (138014591158268), current place: " .. game.PlaceId)
-    return
-end
-
 local FOV_STEP = 10
 local FOV_MIN = 10
 local FOV_MAX = 500
@@ -51,10 +44,10 @@ local state = {
     settings = {
         enabled = true,
         fov = 120,
-        showBoxes = true,
-        showNames = true,
-        showHealth = true,
-        showTracer = true,
+        showBoxes = false,
+        showNames = false,
+        showHealth = false,
+        showTracer = false,
         targetIndex = 1,
     },
     currentTarget = nil,
