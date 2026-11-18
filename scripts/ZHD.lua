@@ -1,3 +1,6 @@
+--- keybinds: 
+-- F2: Master Toggle, F3: Decrease FOV, F4: Increase FOV, F5: Change Aiming Part
+
 local PLACE_ID = 138014591158268
 
 if game.PlaceId ~= PLACE_ID then
