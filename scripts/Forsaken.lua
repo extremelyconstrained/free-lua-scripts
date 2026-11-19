@@ -22,7 +22,7 @@ local function applyStamina()
 	module.StaminaLossDisabled = true
 	module.StaminaLoss = 0
 	module.StaminaGain = 100
-	module.MaxStamina = 1000000
+	module.MaxStamina = 100
 	module.Stamina = module.MaxStamina
 	module.CanSprint = true
 	pcall(function()
@@ -233,6 +233,14 @@ connection = RunService.Heartbeat:Connect(function(deltaTime)
 			end)
 			if not ok or not alive then
 				destroyEsp(model)
+			else
+				-- Also validate the model still has a living humanoid & root part;
+				-- if not, hide & clean up the ESP so stale boxes don't persist.
+				local humanoid = model:FindFirstChildOfClass("Humanoid")
+				local rootPart = model:FindFirstChild("HumanoidRootPart")
+				if not humanoid or humanoid.Health <= 0 or not rootPart then
+					destroyEsp(model)
+				end
 			end
 		end
 	end
