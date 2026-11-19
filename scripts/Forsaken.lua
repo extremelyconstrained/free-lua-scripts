@@ -53,7 +53,59 @@ local VISUAL_PARTS = {
 	LeftHand = true, RightHand = true, LeftFoot = true, RightFoot = true,
 }
 
+-- Generator ESP settings
+local GENERATOR_COLOR = Color3.fromRGB(255, 215, 0) -- Gold/yellow
+local GENERATOR_THICKNESS = 2.0
+local GENERATOR_TEXT_SIZE = 12
+
 local espDrawings = {}
+local generatorEspDrawings = {}
+
+local function destroyEsp(model)
+	local bundle = espDrawings[model]
+	if not bundle then return end
+	for _, drawing in ipairs(bundle) do
+		pcall(function() drawing:Remove() end)
+	end
+	espDrawings[model] = nil
+end
+
+local function destroyGeneratorEsp(model)
+	local bundle = generatorEspDrawings[model]
+	if not bundle then return end
+	for _, drawing in ipairs(bundle) do
+		pcall(function() drawing:Remove() end)
+	end
+	generatorEspDrawings[model] = nil
+end
+
+local function destroyAllGeneratorEsp()
+	for model in pairs(generatorEspDrawings) do
+		destroyGeneratorEsp(model)
+	end
+end
+
+local function getGeneratorEspBundle(model)
+	local bundle = generatorEspDrawings[model]
+	if bundle then return bundle end
+
+	local box = Drawing.new("Square")
+	box.Thickness = GENERATOR_THICKNESS
+	box.Filled = false
+	box.Color = GENERATOR_COLOR
+	box.Visible = false
+
+	local nametag = Drawing.new("Text")
+	nametag.Size = GENERATOR_TEXT_SIZE
+	nametag.Center = true
+	nametag.Outline = true
+	nametag.Color = GENERATOR_COLOR
+	nametag.Visible = false
+
+	bundle = { box = box, nametag = nametag }
+	generatorEspDrawings[model] = bundle
+	return bundle
+end
 
 local function destroyEsp(model)
 	local bundle = espDrawings[model]
@@ -102,6 +154,48 @@ local function setEspVisible(bundle, visible)
 	bundle.box.Visible = visible
 	bundle.nametag.Visible = visible
 	bundle.healthTag.Visible = visible
+end
+
+local function updateGeneratorEsp(model)
+	local bundle = generatorEspDrawings[model]
+	if not bundle then return end
+
+	local camera = Workspace.CurrentCamera
+	local primaryPart = model:GetPrimaryPart()
+	if not primaryPart then
+		destroyGeneratorEsp(model)
+		return
+	end
+
+	local cameraPos = camera.CFrame.Position
+	local genPos = primaryPart.Position
+	local distance = (cameraPos - genPos).Magnitude
+
+	bundle.box.Visible = true
+	bundle.box.Color = GENERATOR_COLOR
+	bundle.box.Position = Vector2.new(0, 0)
+	bundle.box.Size = Vector2.new(120, 36)
+
+	bundle.nametag.Text = string.format("Gen: %.1f%%", math.clamp(100 - distance / 50, 0, 100))
+	bundle.nametag.Position = Vector2.new(0, 18)
+	bundle.nametag.Visible = true
+end
+
+local function isGeneratorModel(model)
+	-- Check direct part named "Generator"
+	if model:IsA("BasePart") and model.Name == "Generator" then
+		return true
+	end
+	-- Check model with Generator in name or children
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart") and descendant.Name == "Generator" then
+			return true
+		end
+		if descendant.Name:lower():find("gen") then
+			return true
+		end
+	end
+	return false
 end
 
 local function getRole(model)
@@ -227,6 +321,7 @@ connection = RunService.Heartbeat:Connect(function(deltaTime)
 	espSweepAccumulator += deltaTime
 	if espSweepAccumulator >= 1 then
 		espSweepAccumulator = 0
+		-- Clean up stale player ESP
 		for model in pairs(espDrawings) do
 			local ok, alive = pcall(function()
 				return model and model:IsDescendantOf(Workspace)
@@ -234,13 +329,20 @@ connection = RunService.Heartbeat:Connect(function(deltaTime)
 			if not ok or not alive then
 				destroyEsp(model)
 			else
-				-- Also validate the model still has a living humanoid & root part;
-				-- if not, hide & clean up the ESP so stale boxes don't persist.
 				local humanoid = model:FindFirstChildOfClass("Humanoid")
 				local rootPart = model:FindFirstChild("HumanoidRootPart")
 				if not humanoid or humanoid.Health <= 0 or not rootPart then
 					destroyEsp(model)
 				end
+			end
+		end
+		-- Clean up stale generator ESP
+		for model in pairs(generatorEspDrawings) do
+			local ok, alive = pcall(function()
+				return model and model:IsDescendantOf(Workspace)
+			end)
+			if not ok or not alive then
+				destroyGeneratorEsp(model)
 			end
 		end
 	end
@@ -259,6 +361,12 @@ connection = RunService.Heartbeat:Connect(function(deltaTime)
 				end
 			end
 		end
+		-- Update generator ESP for models in Workspace
+		for _, model in ipairs(Workspace:GetChildren()) do
+			if isGeneratorModel(model) and model:IsDescendantOf(Workspace) then
+				updateGeneratorEsp(model)
+			end
+		end
 	end)
 end)
 
@@ -268,6 +376,7 @@ local toggleConnection = UserInputService.InputBegan:Connect(function(input, gam
 		enabled = not enabled
 		if not enabled then
 			destroyAllEsp()
+			destroyAllGeneratorEsp()
 		end
 	end
 end)
@@ -299,6 +408,7 @@ local cleanup = function()
 	if matchStateConnection then matchStateConnection:Disconnect() end
 	if characterAddedConnection then characterAddedConnection:Disconnect() end
 	destroyAllEsp()
+	destroyAllGeneratorEsp()
 end
 
 _G.ForsakenScriptCleanup = cleanup
