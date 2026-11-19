@@ -1,4 +1,4 @@
--- Forsaken — ESP (survivors & killers, 2D boxes) + Infinite Stamina
+-- Forsaken — ESP (survivors & killers, 2D boxes) + Infinite Stamina + Generator ESP
 -- F2 toggles everything; _G.ForsakenScriptCleanup restores pristine state.
 
 local Players = game:GetService("Players")
@@ -33,8 +33,7 @@ local function applyStamina()
 end
 applyStamina()
 
--- ESP
-
+-- ESP Colors & Settings
 local BOX_COLOR_KILLER = Color3.fromRGB(255, 70, 70)
 local BOX_COLOR_SURVIVOR = Color3.fromRGB(80, 255, 90)
 local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
@@ -42,78 +41,32 @@ local BOX_THICKNESS = 1.5
 local TEXT_SIZE = 13
 local HEALTH_SIZE = 12
 
-local VISUAL_PARTS = {
-	Head = true, Torso = true, UpperTorso = true, LowerTorso = true,
-	["Left Arm"] = true, ["Right Arm"] = true,
-	["Left Leg"] = true, ["Right Leg"] = true,
-	LeftUpperArm = true, RightUpperArm = true,
-	LeftLowerArm = true, RightLowerArm = true,
-	LeftUpperLeg = true, RightUpperLeg = true,
-	LeftLowerLeg = true, RightLowerLeg = true,
-	LeftHand = true, RightHand = true, LeftFoot = true, RightFoot = true,
-}
-
--- Generator ESP settings
-local GENERATOR_COLOR = Color3.fromRGB(255, 215, 0) -- Gold/yellow
-local GENERATOR_THICKNESS = 2.0
+local GENERATOR_COLOR = Color3.fromRGB(255, 215, 0)
 local GENERATOR_TEXT_SIZE = 12
 
+-- Drawing tables (weak-keyed to prevent leaks)
 local espDrawings = {}
 local generatorEspDrawings = {}
 
+-- ===== ESP Cleanup Functions =====
+
 local function destroyEsp(model)
-	local bundle = espDrawings[model]
+	-- rawget to safely read without metamethod interference
+	local bundle = rawget(espDrawings, model)
 	if not bundle then return end
 	for _, drawing in ipairs(bundle) do
 		pcall(function() drawing:Remove() end)
 	end
-	espDrawings[model] = nil
+	rawset(espDrawings, model, nil)
 end
 
 local function destroyGeneratorEsp(model)
-	local bundle = generatorEspDrawings[model]
+	local bundle = rawget(generatorEspDrawings, model)
 	if not bundle then return end
 	for _, drawing in ipairs(bundle) do
 		pcall(function() drawing:Remove() end)
 	end
-	generatorEspDrawings[model] = nil
-end
-
-local function destroyAllGeneratorEsp()
-	for model in pairs(generatorEspDrawings) do
-		destroyGeneratorEsp(model)
-	end
-end
-
-local function getGeneratorEspBundle(model)
-	local bundle = generatorEspDrawings[model]
-	if bundle then return bundle end
-
-	local box = Drawing.new("Square")
-	box.Thickness = GENERATOR_THICKNESS
-	box.Filled = false
-	box.Color = GENERATOR_COLOR
-	box.Visible = false
-
-	local nametag = Drawing.new("Text")
-	nametag.Size = GENERATOR_TEXT_SIZE
-	nametag.Center = true
-	nametag.Outline = true
-	nametag.Color = GENERATOR_COLOR
-	nametag.Visible = false
-
-	bundle = { box = box, nametag = nametag }
-	generatorEspDrawings[model] = bundle
-	return bundle
-end
-
-local function destroyEsp(model)
-	local bundle = espDrawings[model]
-	if not bundle then return end
-	for _, drawing in ipairs(bundle) do
-		pcall(function() drawing:Remove() end)
-	end
-	espDrawings[model] = nil
+	rawset(generatorEspDrawings, model, nil)
 end
 
 local function destroyAllEsp()
@@ -122,8 +75,17 @@ local function destroyAllEsp()
 	end
 end
 
+local function destroyAllGeneratorEsp()
+	for model in pairs(generatorEspDrawings) do
+		destroyGeneratorEsp(model)
+	end
+end
+
+-- ===== ESP Bundle Creation =====
+
 local function getEspBundle(model)
-	local bundle = espDrawings[model]
+	-- rawget to safely check
+	local bundle = rawget(espDrawings, model)
 	if bundle then return bundle end
 
 	local box = Drawing.new("Square")
@@ -146,57 +108,48 @@ local function getEspBundle(model)
 	healthTag.Visible = false
 
 	bundle = { box = box, nametag = nametag, healthTag = healthTag }
-	espDrawings[model] = bundle
+	rawset(espDrawings, model, bundle)
 	return bundle
 end
 
+local function getGeneratorEspBundle(model)
+	local bundle = rawget(generatorEspDrawings, model)
+	if bundle then return bundle end
+
+	local box = Drawing.new("Square")
+	box.Thickness = 2.0
+	box.Filled = false
+	box.Color = GENERATOR_COLOR
+	box.Visible = false
+
+	local nametag = Drawing.new("Text")
+	nametag.Size = GENERATOR_TEXT_SIZE
+	nametag.Center = true
+	nametag.Outline = true
+	nametag.Color = GENERATOR_COLOR
+	nametag.Visible = false
+
+	bundle = { box = box, nametag = nametag }
+	rawset(generatorEspDrawings, model, bundle)
+	return bundle
+end
+
+-- ===== ESP Visibility =====
+
 local function setEspVisible(bundle, visible)
+	if not bundle then return end
 	bundle.box.Visible = visible
 	bundle.nametag.Visible = visible
 	bundle.healthTag.Visible = visible
 end
 
-local function updateGeneratorEsp(model)
-	local bundle = generatorEspDrawings[model]
+local function setGeneratorEspVisible(bundle, visible)
 	if not bundle then return end
-
-	local camera = Workspace.CurrentCamera
-	local primaryPart = model:GetPrimaryPart()
-	if not primaryPart then
-		destroyGeneratorEsp(model)
-		return
-	end
-
-	local cameraPos = camera.CFrame.Position
-	local genPos = primaryPart.Position
-	local distance = (cameraPos - genPos).Magnitude
-
-	bundle.box.Visible = true
-	bundle.box.Color = GENERATOR_COLOR
-	bundle.box.Position = Vector2.new(0, 0)
-	bundle.box.Size = Vector2.new(120, 36)
-
-	bundle.nametag.Text = string.format("Gen: %.1f%%", math.clamp(100 - distance / 50, 0, 100))
-	bundle.nametag.Position = Vector2.new(0, 18)
-	bundle.nametag.Visible = true
+	bundle.box.Visible = visible
+	bundle.nametag.Visible = visible
 end
 
-local function isGeneratorModel(model)
-	-- Check direct part named "Generator"
-	if model:IsA("BasePart") and model.Name == "Generator" then
-		return true
-	end
-	-- Check model with Generator in name or children
-	for _, descendant in ipairs(model:GetDescendants()) do
-		if descendant:IsA("BasePart") and descendant.Name == "Generator" then
-			return true
-		end
-		if descendant.Name:lower():find("gen") then
-			return true
-		end
-	end
-	return false
-end
+-- ===== Role Detection =====
 
 local function getRole(model)
 	if model.Parent and model.Parent.Name == "Killers" then
@@ -205,6 +158,124 @@ local function getRole(model)
 		return "Survivor"
 	end
 	return nil
+end
+
+-- ===== Generator Model Detection =====
+
+local function isGeneratorModel(model)
+	-- Check if model itself is a part named "Generator"
+	if model:IsA("BasePart") and model.Name == "Generator" then
+		return true
+	end
+	-- Check descendants for Generator part or "gen" in name
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart") then
+			if descendant.Name == "Generator" then
+				return true
+			end
+			if descendant.Name:lower():find("gen") then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+-- ===== Body Part Detection =====
+
+local VISUAL_PARTS = {
+	Head = true, Torso = true, UpperTorso = true, LowerTorso = true,
+	["Left Arm"] = true, ["Right Arm"] = true,
+	["Left Leg"] = true, ["Right Leg"] = true,
+	LeftUpperArm = true, RightUpperArm = true,
+	LeftLowerArm = true, RightLowerArm = true,
+	LeftUpperLeg = true, RightUpperLeg = true,
+	LeftLowerLeg = true, RightLowerLeg = true,
+	LeftHand = true, RightHand = true, LeftFoot = true, RightFoot = true,
+}
+
+local function getVisibleBodyParts(model)
+	local parts = {}
+	for _, descendant in ipairs(model:GetDescendants()) do
+		if descendant:IsA("BasePart") and VISUAL_PARTS[descendant.Name] then
+			parts[#parts + 1] = descendant
+		end
+	end
+	return parts
+end
+
+-- ===== ESP Update =====
+
+local function updateEsp(model)
+	if model == localPlayer.Character then
+		local bundle = rawget(espDrawings, model)
+		if bundle then setEspVisible(bundle, false) end
+		return
+	end
+
+	local role = getRole(model)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local rootPart = model:FindFirstChild("HumanoidRootPart")
+
+	if not role or not humanoid or humanoid.Health <= 0 or not rootPart then
+		local bundle = rawget(espDrawings, model)
+		if bundle then setEspVisible(bundle, false) end
+		return
+	end
+
+	local camera = Workspace.CurrentCamera
+	local rootPosition, rootOnScreen = camera:WorldToViewportPoint(rootPart.Position)
+	if not rootOnScreen or rootPosition.Z <= 0 then
+		local bundle = rawget(espDrawings, model)
+		if bundle then setEspVisible(bundle, false) end
+		return
+	end
+
+	local bodyParts = getVisibleBodyParts(model)
+	if #bodyParts == 0 then
+		local bundle = rawget(espDrawings, model)
+		if bundle then setEspVisible(bundle, false) end
+		return
+	end
+
+	local found, minX, minY, maxX, maxY = projectBounds(bodyParts, camera)
+	if not found then
+		local bundle = rawget(espDrawings, model)
+		if bundle then setEspVisible(bundle, false) end
+		return
+	end
+
+	local padding = 4
+	minX -= padding
+	minY -= padding
+	maxX += padding
+	maxY += padding
+	local width, height = maxX - minX, maxY - minY
+	if width < 4 or height < 4 then
+		local bundle = rawget(espDrawings, model)
+		if bundle then setEspVisible(bundle, false) end
+		return
+	end
+
+	local bundle = getEspBundle(model)
+	local color = role == "Killer" and BOX_COLOR_KILLER or BOX_COLOR_SURVIVOR
+	bundle.box.Color = color
+	bundle.box.Position = Vector2.new(minX, minY)
+	bundle.box.Size = Vector2.new(width, height)
+	bundle.box.Visible = true
+
+	local distance = (camera.CFrame.Position - rootPart.Position).Magnitude
+	local displayName = model:GetAttribute("ActorDisplayName") or model.Name
+	bundle.nametag.Text = string.format("%s | %d studs", displayName, math.floor(distance + 0.5))
+	bundle.nametag.Position = Vector2.new((minX + maxX) / 2, minY - TEXT_SIZE - 2)
+	bundle.nametag.Visible = true
+
+	local healthText = string.format("HP %d/%d", math.floor(humanoid.Health + 0.5), math.floor(humanoid.MaxHealth + 0.5))
+	local fraction = math.clamp(humanoid.Health / math.max(1, humanoid.MaxHealth), 0, 1)
+	bundle.healthTag.Text = healthText
+	bundle.healthTag.Color = Color3.new(1 - fraction, fraction, 0.2)
+	bundle.healthTag.Position = Vector2.new((minX + maxX) / 2, maxY + 2)
+	bundle.healthTag.Visible = true
 end
 
 local function projectBounds(parts, camera)
@@ -232,95 +303,42 @@ local function projectBounds(parts, camera)
 	return found, minX, minY, maxX, maxY
 end
 
-local function getVisibleBodyParts(model)
-	local parts = {}
-	for _, descendant in ipairs(model:GetDescendants()) do
-		if descendant:IsA("BasePart") and VISUAL_PARTS[descendant.Name] then
-			parts[#parts + 1] = descendant
-		end
-	end
-	return parts
-end
+-- ===== Generator ESP Update =====
 
-local function updateEsp(model)
-	if model == localPlayer.Character then
-		local bundle = espDrawings[model]
-		if bundle then setEspVisible(bundle, false) end
-		return
-	end
-
-	local role = getRole(model)
-	local humanoid = model:FindFirstChildOfClass("Humanoid")
-	local rootPart = model:FindFirstChild("HumanoidRootPart")
-
-	if not role or not humanoid or humanoid.Health <= 0 or not rootPart then
-		local bundle = espDrawings[model]
-		if bundle then setEspVisible(bundle, false) end
-		return
-	end
+local function updateGeneratorEsp(model)
+	local bundle = rawget(generatorEspDrawings, model)
+	if not bundle then return end
 
 	local camera = Workspace.CurrentCamera
-	local rootPosition, rootOnScreen = camera:WorldToViewportPoint(rootPart.Position)
-	if not rootOnScreen or rootPosition.Z <= 0 then
-		local bundle = espDrawings[model]
-		if bundle then setEspVisible(bundle, false) end
+	local primaryPart = model:GetPrimaryPart()
+	if not primaryPart then
+		destroyGeneratorEsp(model)
 		return
 	end
 
-	local bodyParts = getVisibleBodyParts(model)
-	if #bodyParts == 0 then
-		local bundle = espDrawings[model]
-		if bundle then setEspVisible(bundle, false) end
-		return
-	end
+	local cameraPos = camera.CFrame.Position
+	local genPos = primaryPart.Position
+	local distance = (cameraPos - genPos).Magnitude
 
-	local found, minX, minY, maxX, maxY = projectBounds(bodyParts, camera)
-	if not found then
-		local bundle = espDrawings[model]
-		if bundle then setEspVisible(bundle, false) end
-		return
-	end
+	setGeneratorEspVisible(bundle, true)
+	bundle.box.Color = GENERATOR_COLOR
+	bundle.box.Position = Vector2.new(0, 0)
+	bundle.box.Size = Vector2.new(120, 36)
 
-	local padding = 4
-	minX -= padding
-	minY -= padding
-	maxX += padding
-	maxY += padding
-	local width, height = maxX - minX, maxY - minY
-	if width < 4 or height < 4 then
-		local bundle = espDrawings[model]
-		if bundle then setEspVisible(bundle, false) end
-		return
-	end
-
-	local bundle = getEspBundle(model)
-	local color = role == "Killer" and BOX_COLOR_KILLER or BOX_COLOR_SURVIVOR
-	bundle.box.Color = color
-	bundle.box.Position = Vector2.new(minX, minY)
-	bundle.box.Size = Vector2.new(width, height)
-	bundle.box.Visible = true
-
-	local distance = (camera.CFrame.Position - rootPart.Position).Magnitude
-	local displayName = model:GetAttribute("ActorDisplayName") or model.Name
-	bundle.nametag.Text = string.format("%s | %d studs", displayName, math.floor(distance + 0.5))
-	bundle.nametag.Position = Vector2.new((minX + maxX) / 2, minY - TEXT_SIZE - 2)
+	bundle.nametag.Text = string.format("Gen: %.1f%%", math.clamp(100 - distance / 50, 0, 100))
+	bundle.nametag.Position = Vector2.new(0, 18)
 	bundle.nametag.Visible = true
-
-	local healthText = string.format("HP %d/%d", math.floor(humanoid.Health + 0.5), math.floor(humanoid.MaxHealth + 0.5))
-	local fraction = math.clamp(humanoid.Health / math.max(1, humanoid.MaxHealth), 0, 1)
-	bundle.healthTag.Text = healthText
-	bundle.healthTag.Color = Color3.new(1 - fraction, fraction, 0.2)
-	bundle.healthTag.Position = Vector2.new((minX + maxX) / 2, maxY + 2)
-	bundle.healthTag.Visible = true
 end
 
--- Watchdog + ESP sweep + round re-hook
+-- ===== Heartbeat Connection =====
+
 local espSweepAccumulator = 0
 local connection
 connection = RunService.Heartbeat:Connect(function(deltaTime)
 	espSweepAccumulator += deltaTime
 	if espSweepAccumulator >= 1 then
 		espSweepAccumulator = 0
+
 		-- Clean up stale player ESP
 		for model in pairs(espDrawings) do
 			local ok, alive = pcall(function()
@@ -336,6 +354,7 @@ connection = RunService.Heartbeat:Connect(function(deltaTime)
 				end
 			end
 		end
+
 		-- Clean up stale generator ESP
 		for model in pairs(generatorEspDrawings) do
 			local ok, alive = pcall(function()
@@ -370,6 +389,8 @@ connection = RunService.Heartbeat:Connect(function(deltaTime)
 	end)
 end)
 
+-- ===== Input Toggle =====
+
 local toggleConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode == Enum.KeyCode.F2 then
@@ -381,11 +402,15 @@ local toggleConnection = UserInputService.InputBegan:Connect(function(input, gam
 	end
 end)
 
+-- ===== Match State =====
+
 local matchStateConnection = localPlayer:GetAttributeChangedSignal("MatchState"):Connect(function()
 	enabled = true
 	destroyAllEsp()
 	applyStamina()
 end)
+
+-- ===== Character Respawn =====
 
 local function onCharacterAdded(character)
 	task.spawn(function()
@@ -401,6 +426,8 @@ if localPlayer.Character then
 	onCharacterAdded(localPlayer.Character)
 end
 
+-- ===== Full Cleanup =====
+
 local cleanup = function()
 	enabled = false
 	if connection then connection:Disconnect() end
@@ -413,4 +440,4 @@ end
 
 _G.ForsakenScriptCleanup = cleanup
 
-return "ESP + infinite stamina loaded"
+return "ESP + infinite stamina + generator ESP loaded"
