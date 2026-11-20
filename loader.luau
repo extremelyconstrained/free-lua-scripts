@@ -28,6 +28,7 @@ local scriptsByPlace = {
 	[119925538689885] = { "scripts/StealOrDie.lua" },
 	[698448212] = { "scripts/Robeats.lua" },
 	[138014591158268] = { "scripts/ZHD.lua" },
+	[72897745776800] = { "scripts/ZHD.lua" },
 	[12355337193] = { "scripts/MVSD.lua" },
 	[18687417158] = { "scripts/Forsaken.lua" },
 	[106560117662077] = { "scripts/Forsaken.lua" },
